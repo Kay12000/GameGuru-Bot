@@ -1,0 +1,197 @@
+/* diseño del fondo de la pagina */
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(to bottom, rgb(84, 173, 255), rgb(39, 2, 66)); 
+    display: flex;
+    flex-direction: column; 
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0px; 
+    padding: 5px;
+    box-sizing: border-box; /* Incluir padding en el ancho total */
+}
+
+/* pie de la pagina */
+.footer {
+    width: 100%; /* Ancho completo */
+    background-color: rgba(10, 0, 29, 0.212); /* Fondo oscuro con opacidad */
+    color: white; /* Color del texto */
+    text-align: center; /* Centrar el texto */
+    padding: 10px 0; /* Espacio arriba y abajo */
+    position: relative; /* Posición relativa para el pie de página */
+    bottom: 0; /* Alinear al fondo */
+    margin-top: 5px; /* Aumentar el margen superior */
+    border-radius: 10px;
+}
+
+/* cuadrado del chatbox */
+.chat-container {
+    background: hwb(248 7% 81% / 0.705);
+    border-radius: 20px;
+    box-shadow: 0 0 10px rgba(247, 246, 246, 0.842);
+    width: 100%; /* Ancho completo */
+    max-width: 900px; /* Ancho máximo */
+    padding: 20px;
+    scrollbar-color: hwb(268 11% 4% / 0.144) rgba(22, 18, 48, 0); /* Color de la miniatura y de la pista */
+    scrollbar-width: thin; /* Ancho de la barra de desplazamiento */
+    box-sizing: border-box; /* Incluir padding en el ancho total */ 
+}
+
+/* linea alrededor del chatbox, esta transparente para que no se vea y las letras no se salgan. */
+.chat-box {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid rgba(28, 5, 58, 0);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 10px;
+    box-sizing: border-box; /* Incluir padding en el ancho total */
+    word-wrap: break-word; /* Permitir que las palabras largas se dividan */
+    overflow-wrap: break-word; /* Permitir que las palabras largas se dividan */
+}
+
+/* Diseño del titulo, NO LO TOQUENNNN, me costo mucho hacerlo  *se pone triste*  */
+.chat-title {
+    padding: 12px 48px; 
+    font-family: 'Roboto', sans-serif; /* Fuente bonita :) */
+    font-size: 35px; /* Tamaño de la fuente */
+    font-weight: 780; /* Hacer el texto más grueso */
+    text-align: center; /* Centrar el texto */
+    margin-bottom: 30px; /* Espacio debajo del título */
+    color: #fff; /* Color del texto */
+    background: linear-gradient(to right, #9602aa, #3a016ecc, hsla(310, 99%, 38%, 0.952), #01116bbb); 
+    background-size: 440px;
+    background-position: 0; 
+    background-clip: text; 
+    -webkit-text-fill-color: transparent; 
+    animation: move 3s linear infinite; 
+    animation-delay: 0s;
+    text-transform: uppercase; /* Transformar a mayúsculas */
+}
+
+/* parte de la animacion del titulo */
+@keyframes move { 
+    0% { 
+        background-position: 0; 
+    } 
+    60% { 
+        background-position: 180px; 
+    } 
+    100% { 
+        background-position: 440px; 
+    } 
+}
+
+/* aca es el efecto que tiene las letras dentro del cuadro cuando chateas con el asistente, no tocar  */
+.chat-message {
+    margin: 10px 0;
+    font-size: 18px; /* Tamaño de la fuente */
+    opacity: 0; /* Comienza invisible */
+    transition: opacity 0.5s ease; /* Transición para el desvanecimiento */
+}
+
+/* el color de las letras de la persona al chatear */
+.user {
+    color: hsl(180, 7%, 92%);
+}
+
+/* el color de las letras del asistente cuando responde */
+.assistant {
+    color: #47aad8;
+}
+
+/* aca es la barra donde la persona chatea */
+input[type="text"] {
+    width: calc(100% - 100px); /* Ancho relativo */
+    padding: 10px;
+    border: 1px solid #f2f3f5;
+    border-radius: 20px;
+    font-size: 1rem; /* Tamaño de la fuente en rem para responsividad */
+    border-color: #02254b; /* Color del borde al enfocar */
+    background-color: hsl(253, 91%, 78%); /* Color de fondo al enfocar */
+    outline: none; /* Quitar el contorno predeterminado */
+    box-sizing: border-box; /* Incluir padding en el ancho total */
+}
+
+/* boton de enviar */
+button {
+    padding: 17px;
+    border: none;
+    background-color: #2d0180;
+    color: white;
+    border-radius: 25px;
+    cursor: pointer;
+    font-family: 'Roboto', sans-serif; /* Fuente bonita */
+}
+
+button:hover {
+    background-color: #0300b3a8;
+}
+
+/* Media Queries para ajustar el diseño en pantallas más pequeñas */
+@media (max-width: 600px) {
+    .chat-title {
+        font-size: 2.5rem; /* Tamaño de fuente más pequeño en pantallas pequeñas */
+        margin-bottom: 20px; /* Ajustar el margen inferior */
+    }
+
+    .chat-container {
+        padding: 10px; /* Menos padding en pantallas pequeñas */
+    }
+
+    .chat-box {
+        height: 200px; /* Ajustar altura en pantallas pequeñas */
+    }
+
+    input[type="text"] {
+        width: calc(100% - 80px); /* Ajustar el ancho en pantallas pequeñas */
+    }
+}
+
+/* las burbujas flotantes */
+.circles {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 96%;
+    height: 96%;
+    z-index: -1; /* para Asegurarse de que esta detrás de otros elementos */
+    overflow: hidden; /* Evita que los elementos salgan del contenedor */
+}
+
+.circles li {
+    position: absolute;
+    display: block;
+    list-style: none;
+    width: 20px;
+    height: 20px;
+    background: #00f4fc34;
+    animation: animate 25s linear infinite;
+    bottom: -150px; /* Comienza fuera de la vista */
+    border-radius: 40px;
+}
+
+/* animacion de las burbujas */
+@keyframes animate {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-150vh); /* Eleva el objeto fuera de la vista */
+    }
+}
+
+/* Estilos para cada objeto, ni se les ocurra tocarlo que ya quedo perfecto jeje */
+.circles li:nth-child(1) { left: 25%; width: 80px; height: 80px; animation-duration: 20s; }
+.circles li:nth-child(2) { left: 10%; width: 20px; height: 20px; animation-duration: 25s; }
+.circles li:nth-child(3) { left: 70%; width: 20px; height: 20px; animation-duration: 20s; }
+.circles li:nth-child(4) { left: 40%; width: 60px; height: 60px; animation-duration: 15s; }
+.circles li:nth-child(5) { left: 65%; width: 20px; height: 20px; animation-duration: 20s; }
+.circles li:nth-child(6) { left: 75%; width: 90px; height: 90px; animation-duration: 25s; }
+.circles li:nth-child(7) { left: 35%; width: 50px; height: 50px; animation-duration: 30s; }
+.circles li:nth-child(8) { left: 50%; width: 25px; height: 25px; animation-duration: 35s; }
+.circles li:nth-child(9) { left: 20%; width: 15px; height: 15px; animation-duration: 40s; }
+.circles li:nth-child(10) { left: 85%; width: 50px; height: 50px; animation-duration: 45s; }
+
+
