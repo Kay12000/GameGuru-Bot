@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <!-- Efecto de fondo con objetos flotantes. no lo toqueeeen--> 
+    <!-- Efecto de fondo con objetos flotantes. no lo toqueeeen-->
     <ul class="circles">
         <li></li>
         <li></li>
@@ -21,33 +21,33 @@
         <li></li>
     </ul>
 
-    <!-- este es el titulo de la pagina--> 
+    <!-- este es el titulo de la pagina-->
     <h1 class="chat-title">¡Hola! Soy GameGuru Bot <br> tu asistente virtual de Samsung Gamer Insights</h1>
-    
+
     <div class="chat-container">
-        <div class="chat-box" id="chat-box">
-            <div class="chat-message assistant">
-                ¡Hola! Soy GameGuru Bot, tu asistente virtual. ¿En qué puedo ayudarte hoy?<br>
-                1. Preguntar sobre campeones.<br>
-                2. Preguntar sobre objetos.<br>
-                3. Contar un chiste.<br>
-                4. Preguntar sobre estrategias de juego.<br>
-                5. Preguntar sobre matemáticas y más.
-            </div>
-        </div>
+        <div class="chat-box" id="chat-box"></div>
         
-        <!-- aca es la barra donde la gente chatea con el asistente--> 
+        <!-- Aca es la barra donde la gente chatea con el asistente-->
         <input type="text" id="user-input" placeholder="Escribe tu pregunta aquí...">
         <button id="send-button">Enviar</button>
+        
+        <!-- Botones para subir archivos y audios -->
+        <input type="file" id="file-input" style="display:none;">
+        <input type="file" id="audio-input" accept="audio/*" style="display:none;">
+        <button id="upload-file-button">Subir Archivo</button>
+        <button id="upload-audio-button">Subir Audio</button>
     </div>
 
-    <!-- pie de pagina, piedes colocar algo que creas importante no se me ocurrio que colocar jajaja--> 
+    <!-- Pie de pagina-->
     <footer class="footer">
         <p>© 2025 Samsung Gamer Insights. Todos los derechos reservados.</p>
     </footer>
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </body>
 </html>
+
+
+
 
 
 
