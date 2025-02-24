@@ -1,1 +1,64 @@
-{"questions": {"1": {"user_id": "12345", "content": "cual es mi anime favorito ?? ", "answer": "Hai to Gensou no Grimgar"}, "2": {"user_id": "12345", "content": "cual es mi anime seine favorito ? ", "answer": "Monster"}, "3": {"user_id": "12345", "content": "cual es mi anime seine favorito ?", "answer": "Monster"}}}
+{
+    "questions": {
+        "1": {
+            "user_id": "12345",
+            "content": "cual es mi anime favorito ??",
+            "answer": "Hai to Gensou no Grimgar"
+        },
+        "2": {
+            "user_id": "12345",
+            "content": "cual es mi anime seine favorito ?",
+            "answer": "Monster"
+        },
+        "3": {
+            "user_id": "system",
+            "content": "Eres GameGuru Bot o openai",
+            "answer": "Soy GameGuru Bot, un asistente virtual especializado en videojuegos electrónicos. Aunque estoy basado en tecnología de OpenAI, mi propósito es ayudarte específicamente con temas relacionados con videojuegos. ¿Hay algo específico que te gustaría saber o discutir?"
+        },
+        "4": {
+            "user_id": "system",
+            "content": "que son mejores los perros o los gatos ?",
+            "answer": "La preferencia entre perros y gatos es muy subjetiva y depende de las personalidades y estilos de vida de cada persona. Aquí hay algunos puntos a considerar:\n\n**Perros:**\n- Son muy leales y pueden ser grandes compañeros.\n- Requieren más atención y ejercicio, lo que puede ser ideal para personas activas.\n- Pueden ser entrenados para realizar trucos y tareas específicas.\n- A menudo son más sociables y disfrutan de la interactividad con los humanos.\n\n**Gatos:**\n- Son más independientes y requieren menos atención, lo que los hace ideales para personas con un estilo de vida más ocupado.\n- No necesitan salir a pasear y pueden satisfacer sus necesidades de ejercicio en casa.\n- Suelen ser más bajos en mantenimiento en comparación con los perros.\n- Muchas personas aprecian su personalidad más tranquila y a veces juguetona.\n\nAl final, si prefieres perros o gatos depende de lo que estés buscando en una mascota. ¿Tienes alguna preferencia o buscas información sobre algún videojuego relacionado con mascotas?"
+        },
+        "5": {
+            "user_id": "system",
+            "content": "que es mejor comer en la mañana ?",
+            "answer": "Mientras que mi enfoque es sobre los videojuegos, puedo ofrecerte un consejo general sobre la alimentación. En la mañana, es recomendable consumir un desayuno equilibrado que incluya:\n\n1. **Carbohidratos complejos**: Como avena, pan integral o frutas, que te dan energía sostenida.\n2. **Proteínas**: Como huevos, yogur o frutos secos, que pueden ayudarte a sentirte saciado.\n3. **Grasas saludables**: Como aguacate o nueces, que son importantes para la salud general.\n\nUn buen desayuno puede ayudarte a comenzar el día con más energía, lo cual es esencial si planeas jugar videojuegos y mantenerte concentrado. Si buscas consejos específicos relacionados con la energía para jugar, ¡pregúntame!"
+        },
+        "6": {
+            "user_id": "12345",
+            "content": "que son mejores los perros o los gatos ? ",
+            "answer": "La preferencia entre perros y gatos es subjetiva y depende de las preferencias personales de cada persona. Aquí hay algunas consideraciones sobre ambos:\n\n**Perros:**\n- Son conocidos por ser leales y sociales.\n- Necesitan atención y ejercicio regular.\n- Pueden ser entrenados para realizar tareas y trucos.\n- Son buenos compañeros para actividades al aire libre.\n\n**Gatos:**\n- Son más independientes y requieren menos atención constante.\n- Generalmente son más fáciles de cuidar en espacios pequeños.\n- Suelen ser muy limpios y se cuidan a sí mismos.\n- Tienen personalidades únicas y pueden ser muy cariñosos.\n\nAl final, la mejor elección depende de tu estilo de vida y lo que buscas en una mascota. ¿Eres más de perros, gatos, o te gustan ambos?"
+        },
+        "7": {
+            "user_id": "12345",
+            "content": "que es mejor comer en la mañana ?",
+            "answer": "Aunque esas preguntas son interesantes, no están relacionadas directamente con videojuegos. Sin embargo, si tienes curiosidad sobre personajes en videojuegos relacionados con mascotas o la comida en algún juego específico, ¡estaré encantado de ayudarte! ¿Te gustaría saber algo sobre eso?"
+        },
+        "8": {
+            "user_id": "12345",
+            "content": "que me recomiendas para hacer ejercicio ? ",
+            "answer": "Parece que estás haciendo preguntas más generales que sobre videojuegos. Sin embargo, puedo ofrecerte respuestas básicas:\n\n1. **Perros vs. Gatos:** Esto depende de las preferencias personales. Los perros son conocidos por ser leales y activos, mientras que los gatos son más independientes y requieren menos atención. \n\n2. **Desayuno:** Una buena opción para el desayuno puede ser una combinación de proteínas (huevos, yogur) y carbohidratos saludables (frutas, avena) para darle energía durante el día.\n\n3. **Ejercicio:** Algunas recomendaciones incluyen:\n   - Caminar o correr al aire libre.\n   - Hacer yoga o pilates para aumentar la flexibilidad y reducir el estrés.\n   - Entrenamientos de fuerza con pesas o ejercicios en casa como flexiones y abdominales.\n   - Actividades recreativas como natación o ciclismo.\n\nSi tienes preguntas específicas sobre videojuegos, ¡estaré encantado de ayudarte!"
+        },
+        "9": {
+            "user_id": "12345",
+            "content": "dime los numeros del uno a 100",
+            "answer": "Claro, aquí tienes los números del uno al cien:\n\n1, 2, 3, 4, 5, 6, 7, 8, 9, 10,  \n11, 12, 13, 14, 15, 16, 17, 18, 19, 20,  \n21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  \n31, 32, 33, 34, 35, 36, 37, 38, 39, 40,  \n41, 42, 43, 44, 45, 46, 47, 48, 49, 50,  \n51, 52, 53, 54, 55, 56, 57, 58, 59, 60,  \n61, 62, 63, 64, 65, 66, 67, 68, 69, 70,  \n71, 72, 73, 74, 75, 76, 77, 78, 79, 80,  \n81, 82, 83, 84, 85, 86, 87, 88, 89, 90,  \n91, 92, 93, 94, 95, 96, 97, 98, 99, 100.  \n\nSi necesitas algo más, no dudes en preguntar."
+        },
+        "10": {
+            "user_id": "12345",
+            "content": "mencionarme todos los campeones de LOL ",
+            "answer": "Hasta mi última actualización en octubre de 2023, aquí tienes una lista de campeones de \"League of Legends\" (LoL). Por favor, ten en cuenta que la lista es extensa y puede haber nuevos campeones o cambios desde entonces. Aquí están los campeones por orden alfabético:\n\n1. Aatrox\n2. Ahri\n3. Akali\n4. Alistar\n5. Amumu\n6. Anivia\n7. Annie\n8. Aphelios\n9. Ashe\n10. Aurelion Sol\n11. Azir\n12. Bard\n13. Bel'Veth\n14. Blitzcrank\n15. Brand\n16. Braum\n17. Caitlyn\n18. Camille\n19. Cassiopeia\n20. Cho'Gath\n21. Corki\n22. Darius\n23. Diana\n24. Dr. Mundo\n25. Draven\n26. Ekko\n27. Elise\n28. Evelynn\n29. Ezreal\n30. Fiddlesticks\n31. Fiora\n32. Fizz\n33. Galio\n34. Gangplank\n35. Garen\n36. Gnar\n37. Gragas\n38. Graves\n39. Gwen\n40. Hecarim\n41. Heimerdinger\n42. Illaoi\n43. Irelia\n44. Janna\n45. Jarvan IV\n46. Jax\n47. Jayce\n48. Jhin\n49. Jinx\n50. Kai'Sa\n51. Kalista\n52. Karma\n53. Karthus\n54. Kassadin\n55. Katarina\n56. Kayle\n57. Kayn\n58. Kennen\n59. Kha'Zix\n60. Kindred\n61. Kled\n62. Kog'Maw\n63. LeBlanc\n64. Lee Sin\n65. Leona\n66. Lillia\n67. Lissandra\n68. Lucian\n69. Lulu\n70. Lux\n71. Malphite\n72. Malzahar\n73. Maokai\n74. Master Yi\n75. Miss Fortune\n76. Morgana\n77. Nami\n78. Nasus\n79. Nautilus\n80. Neeko\n81. Nidalee\n82. Nocturne\n83. Nunu y Willump\n84. Olaf\n85. Orianna\n86. Ornn\n87. Pantheon\n88. Poppy\n89. Pyke\n90. Qiyana\n91. Quinn\n92. Rakan\n93. Rammus\n94. Rek'Sai\n95. Renekton\n96. Rengar\n97. Riven\n98. Rumble\n99. Ryze\n100. Samira\n101. Sejuani\n102. Senna\n103. Seraphine\n104. Sett\n105. Shen\n106. Shyvana\n107. Singed\n108. Sion\n109. Sivir\n110. Skarner\n111. Sona\n112. Soraka\n113. Swain\n114. Sylas\n115. Syndra\n116. Tahm Kench\n117. Taliyah\n118. Talon\n119. Taric\n120. Teemo\n121. Thresh\n122. Tristana\n123. Twitch\n124. Udyr\n125. Urgot\n126. Varus\n127. Vayne\n128. Vega\n129. Vel'Koz\n130. Vi\n131. Viego\n132. Viktor\n133. Vladimir\n134. Volibear\n135. Warwick\n136. Wukong\n137. Xayah\n138. Xerath\n139. Xin Zhao\n140. Yone\n141. Yummi\n142. Zed\n143. Ziggs\n144. Zilean\n145. Zoe\n146. Zyra\n\nRecuerda que es posible que algunos campeones hayan sido añadidos o modificados a partir de esa fecha. Si necesitas más información sobre un campeón específico o cualquier otro aspecto del juego, ¡házmelo saber!"
+        },
+        "11": {
+            "user_id": "12345",
+            "content": "que fue primero el huevo o la gallina ? ",
+            "answer": "Esa es una pregunta clásica llena de sutilezas. Desde un punto de vista biológico, los científicos suelen argumentar que el huevo llegó primero. Esto se debe a que las aves, incluidas las gallinas, evolucionaron de reptiles que ya ponían huevos. Así que, en términos evolutivos, un ave que no era exactamente una gallina puso un huevo del cual nació la primera gallina. Pero en un sentido más filosófico o coloquial, es un dilema que ha intrigado a la humanidad durante siglos. ¡Ambas posiciones son interesantes! ¿Te gustaría saber más sobre algún tema relacionado con la evolución o los juegos que aborden este tipo de preguntas?"
+        },
+        "12": {
+            "user_id": "12345",
+            "content": "que fue primero el huevo o la gallina ?",
+            "answer": "Esa es una pregunta clásica que ha sido debatida durante siglos. Desde la perspectiva científica, la respuesta se inclina hacia el huevo. La teoría evolutiva sugiere que las aves, incluyendo las gallinas, evolucionaron a partir de reptiles. Por lo tanto, lo que podemos considerar un \"huevo de gallina\" probablemente fue puesto por un ave que no era exactamente una gallina, pero que daba lugar a la especie que hoy conocemos. Así que, en términos evolutivos, el huevo fue primero. ¿Hay algo más en lo que te pueda ayudar?"
+        }
+    }
+}

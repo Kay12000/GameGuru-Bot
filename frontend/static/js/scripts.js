@@ -1,6 +1,6 @@
 // Función para mostrar el mensaje de bienvenida
 function showWelcomeMessage() {
-    const welcomeMessage = "¡Hola! Soy GameGuru Bot, tu asistente virtual creado por el equipo Mugiwaras. Estoy aquí para ayudarte con cualquier consulta relacionada con videojuegos electrónicos. ¿En qué puedo ayudarte hoy?";
+    const welcomeMessage = "¡Hola! Soy GameGuru Bot, tu asistente virtual creado por el equipo Mugiwaras. Estoy aquí para ayudarte con cualquier consulta relacionada con videojuegos competitivos o esports. ¿En qué puedo ayudarte hoy?";
     addMessage(welcomeMessage, 'assistant');
 }
 
@@ -33,7 +33,7 @@ document.getElementById('send-button').addEventListener('click', function() {
             } else {
                 addMessage(assistantResponse, 'assistant');
             }
-        }, 500); // Ajustar el tiempo (500 ms en este caso)
+        }, 100); // Reducido el tiempo de retraso a 100 ms
     });
 
     // Limpiar el campo de entrada
