@@ -1,9 +1,12 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_from_directory
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score, recall_score
 import wikipediaapi
 import requests
 import sympy as sp
@@ -17,12 +20,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
-from torch.nn.functional import softmax
-import torch
-import argparse
-import shelve
-from textblob import TextBlob
 
 
 # Descargar recursos de NLTK
@@ -129,150 +126,39 @@ print(f"Número total de respuestas: {len(all_answers)}")
 print("Primeras 5 preguntas:", all_questions[:5])
 print("Primeras 5 respuestas:", all_answers[:5])
 
-# Tokenizer y modelo de DistilBERT
-model_folder = 'model_folder'
-tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
-
-# Tokenizar y preparar los datos
-inputs = tokenizer(all_questions, return_tensors="pt", padding=True, truncation=True, max_length=128)
-labels = torch.tensor([all_answers.index(label) for label in all_answers])  # Ajustar etiquetas
-
 # Dividir los datos en conjuntos de entrenamiento y prueba
-train_size = int(0.8 * len(inputs['input_ids']))
-train_dataset = torch.utils.data.TensorDataset(inputs['input_ids'][:train_size], inputs['attention_mask'][:train_size], labels[:train_size])
-test_dataset = torch.utils.data.TensorDataset(inputs['input_ids'][train_size:], inputs['attention_mask'][train_size:], labels[train_size:])
+X_train, X_test, y_train, y_test = train_test_split(all_questions, all_answers, test_size=0.2, random_state=42)
 
-# Crear data loaders
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True)
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=16, shuffle=False)
+# Crear un Pipeline con TfidfVectorizer y LogisticRegression
+model_pipeline = Pipeline([
+    ('tfidf', TfidfVectorizer()),
+    ('classifier', LogisticRegression(random_state=42))
+])
 
-# Definir la función para evaluar la pérdida en el conjunto de validación
-def evaluate_validation_loss(model, validation_loader):
-    model.eval()
-    total_loss = 0
-    with torch.no_grad():
-        for batch in validation_loader:
-            input_ids, attention_mask, labels = batch
-            outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            total_loss += loss.item()
-    return total_loss / len(validation_loader)
-
-if os.path.exists(model_folder):
-    model = DistilBertForSequenceClassification.from_pretrained(model_folder)
-    tokenizer = DistilBertTokenizer.from_pretrained(model_folder)
-    print("Modelo cargado desde el almacenamiento.")
-else:
-    model = DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=len(set(all_answers)))
-    print("Entrenando el modelo desde cero...")
-
-    # Entrenar el modelo
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
-    model.train()
-
-    best_loss = float('inf')
-    patience = 3  # Detener si no mejora en 3 épocas consecutivas
-    counter = 0
-
-    for epoch in range(20):  # Máximo de épocas
-        print(f"Época {epoch+1}...")
-        
-        # Entrenar modelo aquí
-        model.train()
-        for batch in train_loader:
-            input_ids, attention_mask, labels = batch
-            outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-
-        # Evaluar en el conjunto de validación
-        val_loss = evaluate_validation_loss(model, test_loader)
-        print(f"Loss en validación: {val_loss:.4f}")
-
-        if val_loss < best_loss:
-            best_loss = val_loss
-            counter = 0
-            # Guardar el mejor modelo
-            try:
-                model.save_pretrained('best_model_folder')
-                tokenizer.save_pretrained('best_model_folder')
-                print("Modelo actualizado y guardado.")
-            except Exception as e:
-                print(f"Error al guardar el modelo: {e}")
-        else:
-            counter += 1
-            print(f"No hubo mejora. Patience: {counter}/{patience}")
-            if counter >= patience:
-                print("Early stopping activado. Entrenamiento terminado.")
-                break
-
-    print("Entrenamiento completado. Mejor modelo guardado en 'best_model_folder'.")
+# Entrenar el modelo
+model_pipeline.fit(X_train, y_train)
 
 # Evaluar el modelo
-model.eval()
-all_preds = []
-all_labels = []
-
-with torch.no_grad():
-    for batch in test_loader:
-        input_ids, attention_mask, labels = batch
-        outputs = model(input_ids, attention_mask=attention_mask)
-        probabilities = softmax(outputs.logits, dim=-1)
-        preds = torch.argmax(probabilities, dim=-1)
-        all_preds.extend(preds.cpu().numpy())
-        all_labels.extend(labels.cpu().numpy())
-
-# Calcular métricas
+y_pred = model_pipeline.predict(X_test)
 print("Reporte de Clasificación:")
-print(classification_report(all_labels, all_preds))
+print(classification_report(y_test, y_pred))
 print("Matriz de Confusión:")
-print(confusion_matrix(all_labels, all_preds))
+print(confusion_matrix(y_test, y_pred))
 
 # Calcular la precisión general del modelo
-accuracy = accuracy_score(all_labels, all_preds)
-f1 = f1_score(all_labels, all_preds, average='weighted')
-recall = recall_score(all_labels, all_preds, average='weighted')
+accuracy = accuracy_score(y_test, y_pred)
 print(f"Precisión del modelo: {accuracy * 100:.2f}%")
-print(f"F1 Score del modelo: {f1 * 100:.2f}%")
-print(f"Recall del modelo: {recall * 100:.2f}%")
-
-# Si la precisión es menor a 50%, vuelve a entrenar
-if accuracy < 0.5:
-    print("Modelo con baja precisión. Entrenando nuevamente...")
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)  # Definir el optimizador
-    model.train()
-    for epoch in range(5):  # Ajusta el número de épocas según sea necesario
-        for batch in train_loader:
-            input_ids, attention_mask, labels = batch
-            outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-        print(f"Epoch {epoch+1}: Loss = {loss.item()}")
-
-    # Guardar el modelo después de entrenarlo
-    try:
-        model.save_pretrained('model_folder')
-        tokenizer.save_pretrained('model_folder')
-    except Exception as e:
-        print(f"Error al guardar el modelo: {e}")
-else:
-    print("Modelo cargado con precisión aceptable.")
 
 @app.route('/evaluate_model', methods=['GET'])
-def evaluate_model_route():
-    report = classification_report(all_labels, all_preds, output_dict=True)
+def evaluate_model():
+    report = classification_report(y_test, y_pred, output_dict=True)
     report_df = pd.DataFrame(report).transpose()
-    report_df.to_csv('classification_report.csv', index=True)
     return report_df.to_json()
 
 @app.route('/confusion_matrix', methods=['GET'])
 def confusion_matrix_route():
-    cm = confusion_matrix(all_labels, all_preds)
-    cm_df = pd.DataFrame(cm, index=model.config.id2label.values(), columns=model.config.id2label.values())
+    cm = confusion_matrix(y_test, y_pred)
+    cm_df = pd.DataFrame(cm, index=model_pipeline.classes_, columns=model_pipeline.classes_)
     cm_df.to_csv('confusion_matrix.csv', index=True)
     plt.figure(figsize=(10, 7))
     sns.heatmap(cm_df, annot=True, fmt='d', cmap='Blues')
@@ -320,21 +206,14 @@ def get_response(question, msg, user_id):
     for i, q in enumerate(preprocessed_questions):
         if preprocessed_question == q:
             print("Pregunta encontrada en training_data.json")
-            inputs = tokenizer(preprocessed_question, return_tensors="pt", padding=True, truncation=True, max_length=128)
-            model.eval()
-            with torch.no_grad():
-                outputs = model(**inputs)
-                probabilities = softmax(outputs.logits, dim=-1)
-                predicted_class = torch.argmax(probabilities).item()
-            predicted_response = all_answers[predicted_class]
+            predicted_response = model_pipeline.predict([preprocessed_question])[0]
             print("Respuesta predicha:", predicted_response)  # Registro de depuración
             return predicted_response
     
     # Verificar en db.json
     db_data = read_db()
-    user_questions = [q for q in db_data.get('questions', {}).values() if q['user_id'] == user_id]
-    for q in user_questions:
-        if q['content'].lower() in question.lower():
+    for q in db_data.get('questions', {}).values():
+        if q['user_id'] == user_id and q['content'].lower() in question.lower():
             print("Pregunta encontrada en db.json")
             return q['answer']
     
@@ -490,16 +369,14 @@ def solve_math_question(question):
     except (sp.SympifyError, TypeError):
         return "Lo siento, no puedo resolver esa operación matemática."
 
-# Función para obtener resumen de Wikipedia mejorada
+# Función para obtener resumen de Wikipedia
 def get_wikipedia_summary(query):
     print(f"Buscando en Wikipedia: {query}")
     wiki_wiki = wikipediaapi.Wikipedia(language='es', user_agent='asistente-estudianti/1.0 (kay.1200000@gmail.com)')
     page = wiki_wiki.page(query)
     if page.exists():
         print("Página encontrada en Wikipedia")
-        summary = page.summary[:500]
-        sections = {section.title: section.fullurl for section in page.sections}
-        return {"summary": summary, "sections": sections}
+        return page.summary[:500]
     else:
         print("Página no encontrada en Wikipedia")
         return None
@@ -516,7 +393,7 @@ def get_esports_event_info(event_name):
         return event_info
     else:
         return "No se pudo obtener información sobre el evento."
-    
+
 # Función para obtener estadísticas y análisis de partidas
 def get_performance_analysis(player_id):
     api_url = f"https://api.example.com/esports/players/{player_id}/performance"
@@ -560,40 +437,6 @@ def game_strategy():
     strategy = get_game_strategy(game_name)
     return jsonify({"strategy": strategy})
 
-import speech_recognition as sr
-
-def recognize_speech_from_mic():
-    recognizer = sr.Recognizer()
-    mic = sr.Microphone()
-
-    with mic as source:
-        print("Por favor, hable ahora...")
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
-
-    try:
-        print("Reconociendo...")
-        text = recognizer.recognize_google(audio, language="es-ES")
-        print(f"Usted dijo: {text}")
-        return text
-    except sr.RequestError:
-        print("Error al solicitar resultados del servicio de reconocimiento de voz.")
-    except sr.UnknownValueError:
-        print("No se pudo entender el audio.")
-    return None
-
-@app.route('/voice_input', methods=['POST'])
-def voice_input():
-    text = recognize_speech_from_mic()
-    if text:
-        return jsonify({"text": text})
-    else:
-        return jsonify({"error": "No se pudo reconocer el audio"}), 400
-
-# Verificar si CUDA está disponible y si cuDNN está habilitado
-print("CUDA disponible:", torch.cuda.is_available())  # Debería devolver True si CUDA está disponible
-print("cuDNN habilitado:", torch.backends.cudnn.enabled)  # Debería devolver True si cuDNN está habilitado
-
 if __name__ == '__main__':
     # Verifica que la ruta de la plantilla sea correcta
     template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend/templates/index.html')
@@ -604,5 +447,5 @@ if __name__ == '__main__':
 
     # Imprime el directorio de trabajo actual
     print("Directorio de trabajo actual:", os.getcwd())
-    
-    app.run(debug=True) # Ejecuta la aplicación Flask en modo de depuración
+
+    app.run(debug=True)

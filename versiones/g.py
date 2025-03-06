@@ -1,9 +1,11 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_from_directory
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score, recall_score
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import make_pipeline
+from sklearn.svm import SVC
 import wikipediaapi
 import requests
 import sympy as sp
@@ -12,17 +14,17 @@ import openai
 from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, VotingClassifier
+from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
 from collections import Counter
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
-from torch.nn.functional import softmax
-import torch
-import argparse
-import shelve
-from textblob import TextBlob
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.utils import resample
+from sklearn.linear_model import LogisticRegression
+from sklearn.datasets import load_iris
 
 
 # Descargar recursos de NLTK
@@ -89,8 +91,12 @@ important_words = {"cómo", "qué", "por qué", "cuál", "cuándo", "dónde", "q
 
 def preprocess(text):
     try:
+        # print("Texto original:", text)  # Registro de depuración
         tokens = word_tokenize(text.lower())
+        # print("Tokens:", tokens)  # Registro de depuración
+        # Filtrar tokens, pero mantener las palabras clave importantes
         filtered_tokens = [token for token in tokens if token.isalnum() and (token not in stop_words or token in important_words)]
+        # print("Tokens filtrados:", filtered_tokens)  # Registro de depuración
         return " ".join(filtered_tokens)
     except LookupError:
         nltk.download('punkt', quiet=True)
@@ -129,158 +135,190 @@ print(f"Número total de respuestas: {len(all_answers)}")
 print("Primeras 5 preguntas:", all_questions[:5])
 print("Primeras 5 respuestas:", all_answers[:5])
 
-# Tokenizer y modelo de DistilBERT
-model_folder = 'model_folder'
-tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
+# Definir batch_size para calcular el número de lotes
+batch_size = 32  # Ajusta según tus necesidades
 
-# Tokenizar y preparar los datos
-inputs = tokenizer(all_questions, return_tensors="pt", padding=True, truncation=True, max_length=128)
-labels = torch.tensor([all_answers.index(label) for label in all_answers])  # Ajustar etiquetas
+# Seleccionar una muestra más pequeña de datos para el entrenamiento
+total_questions = len(all_questions)
+sample_size = min(500, total_questions)  # Ajusta el valor según tus necesidades
 
-# Dividir los datos en conjuntos de entrenamiento y prueba
-train_size = int(0.8 * len(inputs['input_ids']))
-train_dataset = torch.utils.data.TensorDataset(inputs['input_ids'][:train_size], inputs['attention_mask'][:train_size], labels[:train_size])
-test_dataset = torch.utils.data.TensorDataset(inputs['input_ids'][train_size:], inputs['attention_mask'][train_size:], labels[train_size:])
+# Seleccionar una muestra del conjunto de datos
+indices = np.random.choice(range(total_questions), size=sample_size, replace=False)
+all_questions_sample = [all_questions[i] for i in indices]
+all_answers_sample = [all_answers[i] for i in indices]
 
-# Crear data loaders
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True)
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=16, shuffle=False)
+# Vectorizar los datos de la muestra
+vectorizer = CountVectorizer()
+X_vectorized = vectorizer.fit_transform(all_questions_sample)
 
-# Definir la función para evaluar la pérdida en el conjunto de validación
-def evaluate_validation_loss(model, validation_loader):
-    model.eval()
-    total_loss = 0
-    with torch.no_grad():
-        for batch in validation_loader:
-            input_ids, attention_mask, labels = batch
-            outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            total_loss += loss.item()
-    return total_loss / len(validation_loader)
+# Dividir los datos en conjuntos de entrenamiento y validación
+X_train, X_val, y_train, y_val = train_test_split(X_vectorized, all_answers_sample, test_size=0.2, random_state=42)
 
-if os.path.exists(model_folder):
-    model = DistilBertForSequenceClassification.from_pretrained(model_folder)
-    tokenizer = DistilBertTokenizer.from_pretrained(model_folder)
-    print("Modelo cargado desde el almacenamiento.")
-else:
-    model = DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=len(set(all_answers)))
-    print("Entrenando el modelo desde cero...")
+# Revisar el balance de clases
+print(f"Distribución de clases antes de balancear: {Counter(y_train)}")
 
-    # Entrenar el modelo
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
-    model.train()
+# Aplicar sobremuestreo a los datos de entrenamiento
+oversampler = RandomOverSampler(random_state=42)
+X_train_balanced, y_train_balanced = oversampler.fit_resample(X_train, y_train)
 
-    best_loss = float('inf')
-    patience = 3  # Detener si no mejora en 3 épocas consecutivas
-    counter = 0
+print(f"Distribución de clases después de balancear: {Counter(y_train_balanced)}")
 
-    for epoch in range(20):  # Máximo de épocas
-        print(f"Época {epoch+1}...")
-        
-        # Entrenar modelo aquí
-        model.train()
-        for batch in train_loader:
-            input_ids, attention_mask, labels = batch
-            outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+# Calcular el número de lotes
+num_batches = X_train_balanced.shape[0] // batch_size
 
-        # Evaluar en el conjunto de validación
-        val_loss = evaluate_validation_loss(model, test_loader)
-        print(f"Loss en validación: {val_loss:.4f}")
+# Reducir el número de estimadores y la profundidad máxima
+rf_model_balanced = RandomForestClassifier(n_jobs=1, random_state=42, n_estimators=20, max_depth=5)
+rf_model_balanced.fit(X_train_balanced, y_train_balanced)
 
-        if val_loss < best_loss:
-            best_loss = val_loss
-            counter = 0
-            # Guardar el mejor modelo
-            try:
-                model.save_pretrained('best_model_folder')
-                tokenizer.save_pretrained('best_model_folder')
-                print("Modelo actualizado y guardado.")
-            except Exception as e:
-                print(f"Error al guardar el modelo: {e}")
-        else:
-            counter += 1
-            print(f"No hubo mejora. Patience: {counter}/{patience}")
-            if counter >= patience:
-                print("Early stopping activado. Entrenamiento terminado.")
-                break
+# Evaluar el modelo con los datos de validación
+rf_val_score_balanced = rf_model_balanced.score(X_val, y_val)
+print(f"Score de validación (RandomForest, datos balanceados): {rf_val_score_balanced}")
 
-    print("Entrenamiento completado. Mejor modelo guardado en 'best_model_folder'.")
+# Entrenar el modelo en lotes más pequeños
+batch_size = 100  # Ajusta el tamaño del lote según tus necesidades
+num_batches = X_train_balanced.shape[0] // batch_size
+
+gb_model_balanced = GradientBoostingClassifier(n_estimators=20, learning_rate=0.1, max_depth=3)
+
+for i in range(num_batches):
+    X_batch, y_batch = resample(X_train_balanced, y_train_balanced, n_samples=batch_size, random_state=i)
+    gb_model_balanced.fit(X_batch, y_batch)
+
+# Evaluar el modelo con los datos de validación
+gb_val_score_balanced = gb_model_balanced.score(X_val, y_val)
+print(f"Score de validación (GradientBoosting, datos balanceados por lotes): {gb_val_score_balanced}")
+
+# Vectorizador
+vectorizer = CountVectorizer()
+
+# Vectoriza los datos de entrenamiento
+X_vectorized = vectorizer.fit_transform(all_questions)
+
+# Dividir los datos en conjuntos de entrenamiento y validación
+X_train, X_val, y_train, y_val = train_test_split(X_vectorized, all_answers, test_size=0.2, random_state=42)
+
+# Revisar el balance de clases
+print(f"Distribución de clases antes de balancear: {Counter(y_train)}")
+
+# Aplicar sobremuestreo a los datos de entrenamiento
+oversampler = RandomOverSampler(random_state=42)
+X_train_balanced, y_train_balanced = oversampler.fit_resample(X_train, y_train)
+
+print(f"Distribución de clases después de balancear: {Counter(y_train_balanced)}")
+
+# Entrenar el modelo con los datos de entrenamiento balanceados
+rf_model_balanced = RandomForestClassifier(n_jobs=1, random_state=42, n_estimators=50, max_depth=10)
+rf_model_balanced.fit(X_train_balanced, y_train_balanced)
+
+# Evaluar el modelo con los datos de validación
+rf_val_score_balanced = rf_model_balanced.score(X_val, y_val)
+print(f"Score de validación (RandomForest, datos balanceados): {rf_val_score_balanced}")
+
+# Entrenar el modelo en lotes
+batch_size = 1000
+num_batches = X_train_balanced.shape[0] // batch_size
+
+gb_model_balanced = GradientBoostingClassifier(n_estimators=50, learning_rate=0.1, max_depth=3)
+
+for i in range(num_batches):
+    X_batch, y_batch = resample(X_train_balanced, y_train_balanced, n_samples=batch_size, random_state=i)
+    gb_model_balanced.fit(X_batch, y_batch)
+
+# Evaluar el modelo con los datos de validación
+gb_val_score_balanced = gb_model_balanced.score(X_val, y_val)
+print(f"Score de validación (GradientBoosting, datos balanceados por lotes): {gb_val_score_balanced}")
+
+# Dividir los datos vectorizados en conjuntos de entrenamiento y prueba
+X_train, X_test, y_train, y_test = train_test_split(X_vectorized, all_answers, test_size=0.2, random_state=42)
+
+# Función para mejorar y entrenar los modelos
+def improve_and_train_models(X_train, y_train, X_test, y_test, cv_splits):
+    import gc
+    gc.collect()
+    
+    # Normalización de datos
+    scaler = StandardScaler(with_mean=False)  # Mantiene la escasez del vector
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    # Ajuste de hiperparámetros con GridSearchCV
+    param_grid_rf = {
+        'n_estimators': [50, 100],  # Reducir el número de árboles
+        'max_depth': [10, None]
+    }
+    rf_model = RandomForestClassifier(n_jobs=1, random_state=42)
+    grid_search_rf = GridSearchCV(rf_model, param_grid_rf, cv=cv_splits, scoring='accuracy')
+    grid_search_rf.fit(X_train_scaled, y_train)
+    best_rf_model = grid_search_rf.best_estimator_
+
+    param_grid_gb = {
+        'n_estimators': [50, 100],  # Reducir el número de árboles
+        'learning_rate': [0.01, 0.1]
+    }
+    gb_model = GradientBoostingClassifier(random_state=42)
+    grid_search_gb = GridSearchCV(gb_model, param_grid_gb, cv=cv_splits, scoring='accuracy')
+    grid_search_gb.fit(X_train_scaled, y_train)
+    best_gb_model = grid_search_gb.best_estimator_
+
+    # Uso de VotingClassifier para combinar modelos
+    voting_clf = VotingClassifier(estimators=[
+        ('rf', best_rf_model),
+        ('gb', best_gb_model),
+        ('nb', MultinomialNB())
+    ], voting='soft')
+    voting_clf.fit(X_train_scaled, y_train)
+
+    # Evaluación del modelo
+    y_pred = voting_clf.predict(X_test_scaled)
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, average='weighted', zero_division=0)
+    recall = recall_score(y_test, y_pred, average='weighted', zero_division=0)
+    f1 = f1_score(y_test, y_pred, average='weighted')
+
+    print(f"VotingClassifier - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1-Score: {f1}")
+    print("\nClassification Report:\n", classification_report(y_test, y_pred, zero_division=0))
+
+    return voting_clf
+
+# Combinar datos de ambos archivos
+combined_data = list(zip(preprocessed_questions, answers)) + list(zip(questions_db, answers_db))
+
+# Filtrar solo tuplas de dos elementos (pregunta y respuesta)
+combined_data = [(q, a) for q, a in combined_data if isinstance(q, str) and isinstance(a, str)]
+
+# Eliminar duplicados
+combined_data = list(set(combined_data))
+
+# Preprocesar y vectorizar los datos combinados sin duplicados
+preprocessed_questions = [preprocess(q) for q, _ in combined_data]
+answers = [a for _, a in combined_data]
+X_vectorized = vectorizer.fit_transform(preprocessed_questions)
+
+# Definir el número de splits para la validación cruzada
+cv_splits = 5  # Puedes ajustar este valor según tus necesidades
+
+
+# Continuar con el proceso de entrenamiento
+X_train, X_test, y_train, y_test = train_test_split(X_vectorized, answers, test_size=0.2, random_state=42)
+improved_model = improve_and_train_models(X_train, y_train, X_test, y_test, cv_splits)
+
+# Cargar el conjunto de datos
+iris = load_iris()
+X, y = iris.data, iris.target
+
+# Clasificación binaria: seleccionando solo dos clases para simplificar
+X, y = X[y != 2], y[y != 2]
+
+# Dividir el conjunto de datos en entrenamiento y prueba
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Inicializar y ajustar el modelo de Regresión Logística
+model = LogisticRegression()
+model.fit(X_train, y_train)
 
 # Evaluar el modelo
-model.eval()
-all_preds = []
-all_labels = []
-
-with torch.no_grad():
-    for batch in test_loader:
-        input_ids, attention_mask, labels = batch
-        outputs = model(input_ids, attention_mask=attention_mask)
-        probabilities = softmax(outputs.logits, dim=-1)
-        preds = torch.argmax(probabilities, dim=-1)
-        all_preds.extend(preds.cpu().numpy())
-        all_labels.extend(labels.cpu().numpy())
-
-# Calcular métricas
-print("Reporte de Clasificación:")
-print(classification_report(all_labels, all_preds))
-print("Matriz de Confusión:")
-print(confusion_matrix(all_labels, all_preds))
-
-# Calcular la precisión general del modelo
-accuracy = accuracy_score(all_labels, all_preds)
-f1 = f1_score(all_labels, all_preds, average='weighted')
-recall = recall_score(all_labels, all_preds, average='weighted')
-print(f"Precisión del modelo: {accuracy * 100:.2f}%")
-print(f"F1 Score del modelo: {f1 * 100:.2f}%")
-print(f"Recall del modelo: {recall * 100:.2f}%")
-
-# Si la precisión es menor a 50%, vuelve a entrenar
-if accuracy < 0.5:
-    print("Modelo con baja precisión. Entrenando nuevamente...")
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)  # Definir el optimizador
-    model.train()
-    for epoch in range(5):  # Ajusta el número de épocas según sea necesario
-        for batch in train_loader:
-            input_ids, attention_mask, labels = batch
-            outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-        print(f"Epoch {epoch+1}: Loss = {loss.item()}")
-
-    # Guardar el modelo después de entrenarlo
-    try:
-        model.save_pretrained('model_folder')
-        tokenizer.save_pretrained('model_folder')
-    except Exception as e:
-        print(f"Error al guardar el modelo: {e}")
-else:
-    print("Modelo cargado con precisión aceptable.")
-
-@app.route('/evaluate_model', methods=['GET'])
-def evaluate_model_route():
-    report = classification_report(all_labels, all_preds, output_dict=True)
-    report_df = pd.DataFrame(report).transpose()
-    report_df.to_csv('classification_report.csv', index=True)
-    return report_df.to_json()
-
-@app.route('/confusion_matrix', methods=['GET'])
-def confusion_matrix_route():
-    cm = confusion_matrix(all_labels, all_preds)
-    cm_df = pd.DataFrame(cm, index=model.config.id2label.values(), columns=model.config.id2label.values())
-    cm_df.to_csv('confusion_matrix.csv', index=True)
-    plt.figure(figsize=(10, 7))
-    sns.heatmap(cm_df, annot=True, fmt='d', cmap='Blues')
-    plt.xlabel('Predicted')
-    plt.ylabel('Actual')
-    plt.title('Confusion Matrix')
-    plt.savefig('confusion_matrix.png')
-    return send_from_directory('.', 'confusion_matrix.png')
+score = model.score(X_test, y_test)
+print(f"Precisión del Modelo: {score}")
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -312,6 +350,11 @@ def save_training_data():
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 # Función para predecir respuesta y aprender de nuevas preguntas
+
+# Definir el modelo básico
+model = make_pipeline(CountVectorizer(), RandomForestClassifier(n_jobs=1, random_state=42))
+
+# Función para obtener respuesta del modelo básico
 def get_response(question, msg, user_id):
     preprocessed_question = preprocess(question)
     print("Pregunta preprocesada:", preprocessed_question)  # Registro de depuración
@@ -320,21 +363,14 @@ def get_response(question, msg, user_id):
     for i, q in enumerate(preprocessed_questions):
         if preprocessed_question == q:
             print("Pregunta encontrada en training_data.json")
-            inputs = tokenizer(preprocessed_question, return_tensors="pt", padding=True, truncation=True, max_length=128)
-            model.eval()
-            with torch.no_grad():
-                outputs = model(**inputs)
-                probabilities = softmax(outputs.logits, dim=-1)
-                predicted_class = torch.argmax(probabilities).item()
-            predicted_response = all_answers[predicted_class]
+            predicted_response = model.predict([preprocessed_question])[0]
             print("Respuesta predicha:", predicted_response)  # Registro de depuración
             return predicted_response
     
     # Verificar en db.json
     db_data = read_db()
-    user_questions = [q for q in db_data.get('questions', {}).values() if q['user_id'] == user_id]
-    for q in user_questions:
-        if q['content'].lower() in question.lower():
+    for q in db_data.get('questions', {}).values():
+        if q['user_id'] == user_id and q['content'].lower() in question.lower():
             print("Pregunta encontrada en db.json")
             return q['answer']
     
@@ -351,6 +387,13 @@ def get_response(question, msg, user_id):
         db_data['questions'][len(db_data['questions']) + 1] = {'user_id': user_id, 'content': question, 'answer': gpt4o_mini_answer}
         write_db(db_data)
         return gpt4o_mini_answer + " (La respuesta se ha guardado correctamente en db.json)"
+    
+    # Utilizar el modelo avanzado como último recurso
+    advanced_response = get_advanced_response(question)
+    if advanced_response:
+        data.append((question, advanced_response))
+        save_training_data()
+        return advanced_response + " (Respuesta generada por el modelo avanzado y guardada en training_data.json)"
     
     return "Lo siento, no tengo información sobre eso."
 
@@ -385,6 +428,48 @@ def get_response_route():
     else:
         print("No se encontró una respuesta adecuada.")  # Registro de depuración
         return jsonify({'response': None})
+
+# Definir el modelo avanzado
+advanced_model = make_pipeline(CountVectorizer(), GradientBoostingClassifier())
+
+# Función para predecir respuesta con lógica avanzada
+def get_advanced_response(question):
+    preprocessed_question = preprocess(question)
+    if preprocessed_question in preprocessed_questions:
+        print("Pregunta encontrada en el modelo avanzado")
+        return advanced_model.predict([preprocessed_question])[0]
+    else:
+        print("Pregunta no encontrada en el modelo avanzado")
+        return "Lo siento, no tengo información sobre eso."
+
+@app.route('/save_response', methods=['POST'])
+def save_response():
+    global data  # Asegúrate de acceder a la variable global 'data'
+    
+    request_data = request.get_json()
+    question = request_data.get('question')
+    response = request_data.get('response')
+    user_id = request_data.get('user_id')
+
+    question = question.strip()
+    response = response.strip()
+
+    # Guardar en la base de datos
+    db_data = read_db()
+    db_data['questions'][len(db_data['questions']) + 1] = {'user_id': user_id, 'content': question, 'answer': response}
+    write_db(db_data)
+
+    # Actualizar el modelo con la nueva pregunta y respuesta
+    if isinstance(data, dict):
+        data = list(data.items())
+    data.append((question, response))
+    questions, answers = zip(*data)
+    preprocessed_questions = [preprocess(q) for q in questions]
+    model.fit(preprocessed_questions, answers)
+    advanced_model.fit(preprocessed_questions, answers)
+    save_training_data()
+
+    return jsonify({"status": "success"})
 
 # Función para obtener respuesta de GPT-4o-mini con manejo de errores
 def get_gpt4o_mini_answer(query, msg):
@@ -490,16 +575,14 @@ def solve_math_question(question):
     except (sp.SympifyError, TypeError):
         return "Lo siento, no puedo resolver esa operación matemática."
 
-# Función para obtener resumen de Wikipedia mejorada
+# Función para obtener resumen de Wikipedia
 def get_wikipedia_summary(query):
     print(f"Buscando en Wikipedia: {query}")
     wiki_wiki = wikipediaapi.Wikipedia(language='es', user_agent='asistente-estudianti/1.0 (kay.1200000@gmail.com)')
     page = wiki_wiki.page(query)
     if page.exists():
         print("Página encontrada en Wikipedia")
-        summary = page.summary[:500]
-        sections = {section.title: section.fullurl for section in page.sections}
-        return {"summary": summary, "sections": sections}
+        return page.summary[:500]
     else:
         print("Página no encontrada en Wikipedia")
         return None
@@ -516,7 +599,7 @@ def get_esports_event_info(event_name):
         return event_info
     else:
         return "No se pudo obtener información sobre el evento."
-    
+
 # Función para obtener estadísticas y análisis de partidas
 def get_performance_analysis(player_id):
     api_url = f"https://api.example.com/esports/players/{player_id}/performance"
@@ -539,6 +622,7 @@ game_strategies = {
 
 def get_game_strategy(game_name):
     return game_strategies.get(game_name, "No se encontró una estrategia para ese juego.")
+    
 # Ruta para obtener información de eventos de esports
 @app.route('/esports_event_info', methods=['POST'])
 def esports_event_info():
@@ -560,40 +644,6 @@ def game_strategy():
     strategy = get_game_strategy(game_name)
     return jsonify({"strategy": strategy})
 
-import speech_recognition as sr
-
-def recognize_speech_from_mic():
-    recognizer = sr.Recognizer()
-    mic = sr.Microphone()
-
-    with mic as source:
-        print("Por favor, hable ahora...")
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
-
-    try:
-        print("Reconociendo...")
-        text = recognizer.recognize_google(audio, language="es-ES")
-        print(f"Usted dijo: {text}")
-        return text
-    except sr.RequestError:
-        print("Error al solicitar resultados del servicio de reconocimiento de voz.")
-    except sr.UnknownValueError:
-        print("No se pudo entender el audio.")
-    return None
-
-@app.route('/voice_input', methods=['POST'])
-def voice_input():
-    text = recognize_speech_from_mic()
-    if text:
-        return jsonify({"text": text})
-    else:
-        return jsonify({"error": "No se pudo reconocer el audio"}), 400
-
-# Verificar si CUDA está disponible y si cuDNN está habilitado
-print("CUDA disponible:", torch.cuda.is_available())  # Debería devolver True si CUDA está disponible
-print("cuDNN habilitado:", torch.backends.cudnn.enabled)  # Debería devolver True si cuDNN está habilitado
-
 if __name__ == '__main__':
     # Verifica que la ruta de la plantilla sea correcta
     template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend/templates/index.html')
@@ -604,5 +654,5 @@ if __name__ == '__main__':
 
     # Imprime el directorio de trabajo actual
     print("Directorio de trabajo actual:", os.getcwd())
-    
-    app.run(debug=True) # Ejecuta la aplicación Flask en modo de depuración
+
+    app.run(debug=True)

@@ -23,6 +23,9 @@ import torch
 import argparse
 import shelve
 from textblob import TextBlob
+import speech_recognition as sr
+import sounddevice as sd
+from scipy.io.wavfile import write
 
 
 # Descargar recursos de NLTK
@@ -146,18 +149,6 @@ test_dataset = torch.utils.data.TensorDataset(inputs['input_ids'][train_size:], 
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=16, shuffle=False)
 
-# Definir la función para evaluar la pérdida en el conjunto de validación
-def evaluate_validation_loss(model, validation_loader):
-    model.eval()
-    total_loss = 0
-    with torch.no_grad():
-        for batch in validation_loader:
-            input_ids, attention_mask, labels = batch
-            outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            total_loss += loss.item()
-    return total_loss / len(validation_loader)
-
 if os.path.exists(model_folder):
     model = DistilBertForSequenceClassification.from_pretrained(model_folder)
     tokenizer = DistilBertTokenizer.from_pretrained(model_folder)
@@ -170,15 +161,7 @@ else:
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
     model.train()
 
-    best_loss = float('inf')
-    patience = 3  # Detener si no mejora en 3 épocas consecutivas
-    counter = 0
-
-    for epoch in range(20):  # Máximo de épocas
-        print(f"Época {epoch+1}...")
-        
-        # Entrenar modelo aquí
-        model.train()
+    for epoch in range(5):  # Ajusta el número de épocas según sea necesario
         for batch in train_loader:
             input_ids, attention_mask, labels = batch
             outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
@@ -186,29 +169,11 @@ else:
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
+        print(f"Epoch {epoch+1}: Loss = {loss.item()}")
 
-        # Evaluar en el conjunto de validación
-        val_loss = evaluate_validation_loss(model, test_loader)
-        print(f"Loss en validación: {val_loss:.4f}")
-
-        if val_loss < best_loss:
-            best_loss = val_loss
-            counter = 0
-            # Guardar el mejor modelo
-            try:
-                model.save_pretrained('best_model_folder')
-                tokenizer.save_pretrained('best_model_folder')
-                print("Modelo actualizado y guardado.")
-            except Exception as e:
-                print(f"Error al guardar el modelo: {e}")
-        else:
-            counter += 1
-            print(f"No hubo mejora. Patience: {counter}/{patience}")
-            if counter >= patience:
-                print("Early stopping activado. Entrenamiento terminado.")
-                break
-
-    print("Entrenamiento completado. Mejor modelo guardado en 'best_model_folder'.")
+    # Guardar el modelo después de entrenarlo
+    model.save_pretrained('model_folder')
+    tokenizer.save_pretrained('model_folder')
 
 # Evaluar el modelo
 model.eval()
@@ -238,32 +203,8 @@ print(f"Precisión del modelo: {accuracy * 100:.2f}%")
 print(f"F1 Score del modelo: {f1 * 100:.2f}%")
 print(f"Recall del modelo: {recall * 100:.2f}%")
 
-# Si la precisión es menor a 50%, vuelve a entrenar
-if accuracy < 0.5:
-    print("Modelo con baja precisión. Entrenando nuevamente...")
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)  # Definir el optimizador
-    model.train()
-    for epoch in range(5):  # Ajusta el número de épocas según sea necesario
-        for batch in train_loader:
-            input_ids, attention_mask, labels = batch
-            outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-        print(f"Epoch {epoch+1}: Loss = {loss.item()}")
-
-    # Guardar el modelo después de entrenarlo
-    try:
-        model.save_pretrained('model_folder')
-        tokenizer.save_pretrained('model_folder')
-    except Exception as e:
-        print(f"Error al guardar el modelo: {e}")
-else:
-    print("Modelo cargado con precisión aceptable.")
-
 @app.route('/evaluate_model', methods=['GET'])
-def evaluate_model_route():
+def evaluate_model():
     report = classification_report(all_labels, all_preds, output_dict=True)
     report_df = pd.DataFrame(report).transpose()
     report_df.to_csv('classification_report.csv', index=True)
@@ -590,9 +531,36 @@ def voice_input():
     else:
         return jsonify({"error": "No se pudo reconocer el audio"}), 400
 
-# Verificar si CUDA está disponible y si cuDNN está habilitado
-print("CUDA disponible:", torch.cuda.is_available())  # Debería devolver True si CUDA está disponible
-print("cuDNN habilitado:", torch.backends.cudnn.enabled)  # Debería devolver True si cuDNN está habilitado
+def record_audio(duration=5, fs=44100):
+    print("Grabando...")
+    audio = sd.rec(int(duration * fs), samplerate=fs, channels=2, dtype='int16')
+    sd.wait()  # Espera hasta que la grabación esté completa
+    write('output.wav', fs, audio)  # Guarda la grabación en un archivo WAV
+    print("Grabación completa.")
+    return 'output.wav'
+
+def recognize_speech_from_file(file_path):
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(file_path) as source:
+        audio = recognizer.record(source)
+    try:
+        print("Reconociendo...")
+        text = recognizer.recognize_google(audio, language="es-ES")
+        print(f"Usted dijo: {text}")
+        return text
+    except sr.RequestError:
+        print("Error al solicitar resultados del servicio de reconocimiento de voz.")
+    except sr.UnknownValueError:
+        print("No se pudo entender el audio.")
+    return None
+
+# Ejemplo de uso
+if __name__ == "__main__":
+    audio_file = record_audio()
+    recognize_speech_from_file(audio_file)
+
+if __name__ == "__main__":
+    recognize_speech_from_mic()
 
 if __name__ == '__main__':
     # Verifica que la ruta de la plantilla sea correcta

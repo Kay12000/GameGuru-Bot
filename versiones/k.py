@@ -23,6 +23,9 @@ import torch
 import argparse
 import shelve
 from textblob import TextBlob
+import speech_recognition as sr
+import sounddevice as sd
+from scipy.io.wavfile import write
 
 
 # Descargar recursos de NLTK
@@ -590,9 +593,36 @@ def voice_input():
     else:
         return jsonify({"error": "No se pudo reconocer el audio"}), 400
 
-# Verificar si CUDA está disponible y si cuDNN está habilitado
-print("CUDA disponible:", torch.cuda.is_available())  # Debería devolver True si CUDA está disponible
-print("cuDNN habilitado:", torch.backends.cudnn.enabled)  # Debería devolver True si cuDNN está habilitado
+def record_audio(duration=5, fs=44100):
+    print("Grabando...")
+    audio = sd.rec(int(duration * fs), samplerate=fs, channels=2, dtype='int16')
+    sd.wait()  # Espera hasta que la grabación esté completa
+    write('output.wav', fs, audio)  # Guarda la grabación en un archivo WAV
+    print("Grabación completa.")
+    return 'output.wav'
+
+def recognize_speech_from_file(file_path):
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(file_path) as source:
+        audio = recognizer.record(source)
+    try:
+        print("Reconociendo...")
+        text = recognizer.recognize_google(audio, language="es-ES")
+        print(f"Usted dijo: {text}")
+        return text
+    except sr.RequestError:
+        print("Error al solicitar resultados del servicio de reconocimiento de voz.")
+    except sr.UnknownValueError:
+        print("No se pudo entender el audio.")
+    return None
+
+# Ejemplo de uso
+if __name__ == "__main__":
+    audio_file = record_audio()
+    recognize_speech_from_file(audio_file)
+
+if __name__ == "__main__":
+    recognize_speech_from_mic()
 
 if __name__ == '__main__':
     # Verifica que la ruta de la plantilla sea correcta

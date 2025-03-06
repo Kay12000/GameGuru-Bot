@@ -7,11 +7,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <!-- Efecto de fondo con objetos flotantes. no lo toqueeeen-->
+    <!-- Efecto de fondo con objetos flotantes. No lo toquen -->
     <ul class="circles">
-        <li></li>
-        <li></li>
-        <li></li>
         <li></li>
         <li></li>
         <li></li>
@@ -22,24 +19,26 @@
         <li></li>
     </ul>
 
-    <!-- este es el titulo de la pagina-->
+    <!-- Título de la página -->
     <h1 class="chat-title">¡Hola! Soy GameGuru Bot <br> tu asistente virtual de Samsung Gamer Insights</h1>
 
     <div class="chat-container">
         <div class="chat-box" id="chat-box"></div>
-        
-        <!-- Aca es la barra donde la gente chatea con el asistente-->
-        <input type="text" id="user-input" placeholder="Escribe tu pregunta aquí...">
-        <button id="send-button">Enviar</button>
-        
+
+        <!-- Barra de chat -->
+        <form id="chat-form">
+            <input type="text" id="user-input" name="question" placeholder="Escribe tu pregunta aquí...">
+            <button type="button" id="send-button">Enviar</button>
+        </form>
+
         <!-- Botones para subir archivos y audios -->
         <input type="file" id="file-input" style="display:none;">
         <input type="file" id="audio-input" accept="audio/*" style="display:none;">
-        <button id="upload-file-button">Subir Archivo</button>
-        <button id="upload-audio-button">Subir Audio</button>
+        <button type="button" id="upload-file-button">Subir Archivo</button>
+        <button type="button" id="upload-audio-button">Subir Audio</button>
     </div>
 
-    <!-- Pie de pagina-->
+    <!-- Pie de página -->
     <footer class="footer">
         <p>© 2025 Samsung Gamer Insights. Todos los derechos reservados.</p>
     </footer>

@@ -19,10 +19,11 @@ document.getElementById('send-button').addEventListener('click', function() {
 
     // Respuesta del asistente después de un pequeño retraso
     getAssistantResponse(userInput, userId).then(assistantResponse => {
+        console.log('Respuesta del asistente:', assistantResponse); // Registro de depuración
         // Mostrar la respuesta del asistente después de un retraso
         setTimeout(() => {
             if (assistantResponse.includes("Lo siento, no tengo información sobre eso.")) {
-                // Mostrar mensaje emergente para guardar la respuesta
+                // Mostrar mensaje emergente para guardar la respuesta solo si no se encuentra la respuesta
                 let newAnswer = prompt("No tengo una respuesta para eso. ¿Cuál debería ser la respuesta?");
                 if (newAnswer) {
                     saveNewAnswer(userInput, newAnswer, userId);
@@ -66,6 +67,7 @@ async function getAssistantResponse(input, userId) {
             body: JSON.stringify({ question: input, user_id: userId })
         });
         const data = await response.json();
+        console.log('Datos recibidos del servidor:', data); // Registro de depuración
         return data.response;
     } catch (error) {
         console.error('Error al obtener la respuesta del asistente:', error);
@@ -135,7 +137,7 @@ function addImage(filepath, sender) {
     chatBox.scrollTop = chatBox.scrollHeight; // Desplazar hacia abajo
 }
 
-// Función para mostrar el mensaje letra por letra, NO LO TOQUEEEEN
+// Función para mostrar el mensaje letra por letra
 function addMessage(message, sender) {
     const chatBox = document.getElementById('chat-box');
     const messageElement = document.createElement('div');
@@ -143,6 +145,7 @@ function addMessage(message, sender) {
     messageElement.style.opacity = 0; // Comienza invisible
     chatBox.appendChild(messageElement);
     chatBox.scrollTop = chatBox.scrollHeight; // Desplazar hacia abajo
+    console.log('Mensaje agregado al chat:', message); // Registro de depuración
 
     // Efecto de escritura letra por letra solo para el asistente
     if (sender === 'assistant') {
