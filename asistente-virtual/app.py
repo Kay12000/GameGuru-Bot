@@ -54,3 +54,4 @@ if __name__ == '__main__':
     print(f"El modelo está configurado para {model.config.num_labels} clases.")
 
     app.run(debug=True)  # Ejecuta la aplicación Flask en modo de depuración
+    
