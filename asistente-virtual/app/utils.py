@@ -4,7 +4,6 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from langdetect import detect, LangDetectException
-from langdetect.lang_detect_exception import LangDetectException
 from translate import Translator
 import re
 from deep_translator import GoogleTranslator
@@ -41,7 +40,7 @@ def write_db(data):
             json.dump(data, file, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f"Error al escribir en la base de datos: {e}")
-        
+
 def add_question_to_db(question, user_id):
     db_data = read_db()
     questions_db = db_data.get('questions', {})
@@ -56,7 +55,7 @@ def add_question_to_db(question, user_id):
     
     db_data["questions"] = questions_db
     write_db(db_data)
-        
+
 def preprocess(text):
     text = text.lower()
     text = re.sub(r'[^a-zñáéíóúü0-9\s]', '', text)  # Permitir caracteres en español

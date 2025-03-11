@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from app.routes import app_routes
 from apscheduler.schedulers.background import BackgroundScheduler
-from app.models import retrain_model
+from app.models import retrain_model, load_model
 import os
 from dotenv import load_dotenv
 import torch
@@ -14,6 +14,9 @@ if not os.path.exists('.env'):
 else:
     load_dotenv()
 
+# Cargar el modelo y el tokenizer entrenados
+model, tokenizer = load_model()
+
 def create_app():
     app = Flask(__name__, template_folder='frontend/templates', static_folder='frontend/static')
     
@@ -22,15 +25,6 @@ def create_app():
     
     # Registrar blueprints
     app.register_blueprint(app_routes)
-
-    # Configurar el programador de tareas
-    try:
-        scheduler = BackgroundScheduler()
-        scheduler.add_job(func=retrain_model, trigger="interval", days=1)
-        scheduler.start()
-        print("Programador iniciado correctamente.")
-    except Exception as e:
-        print(f"Error al iniciar el programador: {e}")
 
     return app
 
@@ -56,19 +50,5 @@ if __name__ == '__main__':
         print(f"Archivos estáticos encontrados en: {static_path}")
     else:
         print(f"Directorio de archivos estáticos NO encontrado en: {static_path}")
-
-    # Cargar el modelo y el tokenizer entrenados
-    try:
-        model_folder = 'model_folder'
-        tokenizer = DistilBertTokenizer.from_pretrained(model_folder)
-        model = DistilBertForSequenceClassification.from_pretrained(model_folder)
-        print("Modelo y tokenizer cargados desde", model_folder)
-        print("Configuración del modelo:", model.config)
-        print(f"El modelo está configurado para {model.config.num_labels} clases.")
-        print("Número total de parámetros en el modelo:", sum(p.numel() for p in model.parameters()))
-        print("Número de parámetros entrenables:", sum(p.numel() for p in model.parameters() if p.requires_grad))
-    except Exception as e:
-        print(f"Error al cargar el modelo o tokenizer: {e}")
-        exit(1)  # Salir si no se puede cargar el modelo
 
     app.run(debug=os.getenv('FLASK_DEBUG', 'True').lower() == 'true')  # Ejecuta la aplicación Flask en modo debug

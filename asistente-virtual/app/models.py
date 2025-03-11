@@ -7,8 +7,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import accuracy_score, f1_score, recall_score
 from .utils import preprocess, read_db, write_db, detect_language, translate_text
 from .config import Config
-import openai 
-from app.utils import translate_text
+import openai
 
 # Cargar el modelo y el tokenizer
 model_folder = 'model_folder'
@@ -21,7 +20,6 @@ def call_gpt4o_mini_api(question):
         ]
     )
     return response['choices'][0]['message']['content']
-
 
 def load_model():
     if os.path.exists(model_folder) and os.listdir(model_folder):  # Si la carpeta existe y no está vacía
@@ -172,7 +170,7 @@ def get_response(question, user_id):
 def get_response_with_fallback(question, user_id):
     # Paso 1: Intenta obtener una respuesta de gpt-4o-mini
     try:
-        gpt4_response = call_gpt4o_mini_api(question)  # Define esta función para llamar a gpt-4o-mini
+        gpt4_response = call_gpt4o_mini_api(question)
         if gpt4_response:
             return gpt4_response
     except Exception as e:
@@ -180,7 +178,7 @@ def get_response_with_fallback(question, user_id):
 
     # Paso 2: Si gpt-4o-mini falla, usa tu modelo local
     try:
-        local_response = get_response(question, user_id)  # Tu función ya existente
+        local_response = get_response(question, user_id)
         if local_response:
             return local_response
     except Exception as e:

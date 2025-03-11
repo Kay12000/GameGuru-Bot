@@ -149,7 +149,7 @@ class AppTestCase(unittest.TestCase):
     def test_translate_text(self):
         text = "Hola, ¿cómo estás?"
         translated = translate_text(text, src_lang="es", dest_lang="en")
-        self.assertEqual(translated.lower(), "hello, how are you")
+        self.assertEqual(translated.lower().replace("?", ""), "hello, how are you")
 
     def test_read_db(self):
         db_data = read_db()

@@ -2,7 +2,8 @@ from flask import Blueprint, request, jsonify, send_from_directory, render_templ
 from werkzeug.utils import secure_filename
 import os
 from .utils import allowed_file, read_db, write_db, preprocess, translate_text
-from .models import get_response, get_game_strategy, get_performance_analysis, get_esports_event_info
+from .models import get_response_with_fallback, get_game_strategy, get_performance_analysis, get_esports_event_info, model, tokenizer
+import torch
 
 # Crea un blueprint para organizar las rutas de la aplicación
 app_routes = Blueprint('app_routes', __name__)
@@ -49,17 +50,17 @@ def get_response_route():
     question = data.get('question')
     user_id = data.get('user_id')
     
-    # Traducción de la pregunta al inglés si es necesario
-    lang = preprocess(question)
-    if lang != 'en':
-        question = translate_text(question, src_lang=lang, dest_lang='en')
-    
-    response = get_response(question, user_id)
-    
-    if response:
-        return jsonify({'response': response}), 200
-    else:
-        return jsonify({'response': "Lo siento, no tengo una respuesta para esa pregunta en este momento."}), 404
+    if not question or not user_id:
+        return jsonify({'error': 'Faltan datos'}), 400
+
+    # Obtener la respuesta del modelo o de GPT-4o-mini
+    try:
+        response = get_response_with_fallback(question, user_id)
+    except Exception as e:
+        print(f"Error al obtener la respuesta: {e}")
+        response = "Lo siento, ocurrió un error al obtener la respuesta."
+
+    return jsonify({'response': response})
 
 # Ruta para guardar preguntas y respuestas
 @app_routes.route('/save_response', methods=['POST'])
