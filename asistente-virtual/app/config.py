@@ -11,9 +11,5 @@ class Config:
     # Hiperparámetros ajustables
     LEARNING_RATE = 5e-5
     BATCH_SIZE = 16
-    NUM_EPOCHS = 20
+    NUM_EPOCHS = 25
     PATIENCE = 3
-
-# Verificar y crear la carpeta de uploads si no existe
-if not os.path.exists(Config.UPLOAD_FOLDER):
-    os.makedirs(Config.UPLOAD_FOLDER)

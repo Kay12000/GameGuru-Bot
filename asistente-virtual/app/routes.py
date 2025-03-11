@@ -11,6 +11,7 @@ def index():
     try:
         return render_template('index.html')
     except Exception as e:
+        current_app.logger.error(f"Error al renderizar la plantilla: {e}")
         return f"Error al renderizar la plantilla: {e}", 500
 
 @app_routes.route('/upload', methods=['POST'])
@@ -49,6 +50,25 @@ def get_response_route():
         return jsonify({'response': response}), 200
     else:
         return jsonify({'response': None}), 404
+
+@app_routes.route('/save_response', methods=['POST'])
+def save_response_route():
+    data = request.get_json()
+    question = data.get('question')
+    answer = data.get('answer')
+    user_id = data.get('user_id')
+    
+    db_data = read_db()
+    questions_db = db_data.get('questions', {})
+    new_id = str(len(questions_db) + 1)
+    questions_db[new_id] = {
+        'user_id': user_id,
+        'content': question,
+        'answer': answer
+    }
+    write_db(db_data)
+    
+    return jsonify({'message': 'Response saved successfully'}), 200
 
 @app_routes.route('/esports_event_info', methods=['POST'])
 def esports_event_info():

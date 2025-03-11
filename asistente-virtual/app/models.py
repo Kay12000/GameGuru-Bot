@@ -24,15 +24,26 @@ def load_model():
 
 model, tokenizer = load_model()
 
-def train_model(model, train_loader, test_loader, num_epochs=20):
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
+def train_model():
+    db_data = read_db()
+    questions_db = db_data.get('questions', {})
+    questions = [q_data['content'] for q_data in questions_db.values()]
+    answers = [q_data['answer'] for q_data in questions_db.values()]
+    
+    inputs = tokenizer(questions, return_tensors="pt", padding=True, truncation=True, max_length=128)
+    labels = torch.tensor([answers.index(label) for label in answers])
+    
+    dataset = TensorDataset(inputs['input_ids'], inputs['attention_mask'], labels)
+    train_size = int(0.8 * len(dataset))
+    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, len(dataset) - train_size])
+    
+    train_loader = DataLoader(train_dataset, batch_size=Config.BATCH_SIZE, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=Config.BATCH_SIZE, shuffle=False)
+    
     model.train()
-    best_loss = float('inf')
-    patience = 3
-    counter = 0
-
-    for epoch in range(num_epochs):
-        print(f"Época {epoch+1}...")
+    optimizer = torch.optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
+    
+    for epoch in range(Config.NUM_EPOCHS):
         for batch in train_loader:
             input_ids, attention_mask, labels = batch
             outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
@@ -40,22 +51,10 @@ def train_model(model, train_loader, test_loader, num_epochs=20):
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-
-        val_loss = evaluate_validation_loss(model, test_loader)
-        print(f"Loss en validación: {val_loss:.4f}")
-
-        if val_loss < best_loss:
-            best_loss = val_loss
-            counter = 0
-            model.save_pretrained('best_model_folder')
-            tokenizer.save_pretrained('best_model_folder')
-            print("Modelo actualizado y guardado.")
-        else:
-            counter += 1
-            print(f"No hubo mejora. Patience: {counter}/{patience}")
-            if counter >= patience:
-                print("Early stopping activado. Entrenamiento terminado.")
-                break
+    
+    model.save_pretrained(model_folder)
+    tokenizer.save_pretrained(model_folder)
+    print("Modelo entrenado y guardado.")
 
 def evaluate_validation_loss(model, validation_loader):
     model.eval()

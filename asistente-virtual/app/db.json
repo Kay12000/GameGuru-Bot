@@ -7,7 +7,7 @@
         },
         "2": {
             "user_id": "12345",
-            "content": "cual es mi anime seine favorito ?",
+            "content": "cual es mi anime seinen favorito ?",
             "answer": "Monster"
         },
         "3": {
@@ -4829,6 +4829,11 @@
             "user_id": "12345",
             "content": "quien es fidotk ?? ",
             "answer": "Fidotk es un creador de contenido, streamer y jugador profesional en la comunidad de esports, conocido especialmente por sus habilidades en juegos como \"League of Legends\". A menudo se le asocia con la producción de contenido relacionado con el gaming en plataformas como Twitch y YouTube. Su estilo y personalidad lo han hecho popular entre los fans. Si necesitas más información específica sobre él o su carrera, ¡hazmelo saber!"
+        },
+        "967": {
+            "user_id": "12345",
+            "content": "quien es fidotk ??",
+            "answer": null
         }
     }
 }

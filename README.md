@@ -31,14 +31,13 @@ asistente-virtual
 - Flask
 - PyTorch
 - Transformers
-- NLTK
-- OpenAI API
+- Scikit-learn
 
 ## Instalación
 
 1. Clona el repositorio:
    ```
-   git clone <URL_DEL_REPOSITORIO>
+   git clone https://github.com/Kay12000/GameGuru-Bot.git
    cd asistente-virtual
    ```
 
