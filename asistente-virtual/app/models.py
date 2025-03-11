@@ -7,19 +7,41 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import accuracy_score, f1_score, recall_score
 from .utils import preprocess, read_db, write_db, detect_language, translate_text
 from .config import Config
+import openai 
+from app.utils import translate_text
 
 # Cargar el modelo y el tokenizer
 model_folder = 'model_folder'
 
+def call_gpt4o_mini_api(question):
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "user", "content": question}
+        ]
+    )
+    return response['choices'][0]['message']['content']
+
+
 def load_model():
-    if os.path.exists(model_folder):
-        model = DistilBertForSequenceClassification.from_pretrained(model_folder)
-        tokenizer = DistilBertTokenizer.from_pretrained(model_folder)
-        print("Modelo cargado desde el almacenamiento.")
+    if os.path.exists(model_folder) and os.listdir(model_folder):  # Si la carpeta existe y no está vacía
+        try:
+            model = DistilBertForSequenceClassification.from_pretrained(model_folder)
+            tokenizer = DistilBertTokenizer.from_pretrained(model_folder)
+            print("Modelo cargado desde el almacenamiento.")
+        except Exception as e:
+            print(f"Error al cargar el modelo guardado: {e}")
+            print("Inicializando modelo desde cero.")
+            model = DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+            tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
     else:
+        print("Carpeta 'model_folder' no encontrada. Inicializando modelo desde cero.")
         model = DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
         tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
-        print("Modelo creado desde cero.")
+        os.makedirs(model_folder, exist_ok=True)
+        model.save_pretrained(model_folder)
+        tokenizer.save_pretrained(model_folder)
+        print("Modelo guardado por primera vez en 'model_folder'.")
     return model, tokenizer
 
 model, tokenizer = load_model()
@@ -28,22 +50,38 @@ def train_model():
     db_data = read_db()
     questions_db = db_data.get('questions', {})
     questions = [q_data['content'] for q_data in questions_db.values()]
-    answers = [q_data['answer'] for q_data in questions_db.values()]
-    
-    inputs = tokenizer(questions, return_tensors="pt", padding=True, truncation=True, max_length=128)
-    labels = torch.tensor([answers.index(label) for label in answers])
-    
+    answers = [q_data['answer'] for q_data in questions_db.values() if q_data['answer'] is not None]
+
+    # Mapeo de respuestas únicas a índices numéricos
+    unique_answers = list(set(answers))
+    answer_to_index = {answer: idx for idx, answer in enumerate(unique_answers)}
+    labels = [answer_to_index[answer] for answer in answers]
+
+    # Configuración del modelo con etiquetas correctas
+    num_labels = len(unique_answers)
+    model = DistilBertForSequenceClassification.from_pretrained(
+        "distilbert-base-uncased",
+        num_labels=num_labels
+    )
+
+    # Tokenización y configuración del dataset
+    inputs = tokenizer(questions, return_tensors="pt", padding=True, truncation=True, max_length=64)  # Reduce max_length
+    labels = torch.tensor(labels)
     dataset = TensorDataset(inputs['input_ids'], inputs['attention_mask'], labels)
+
+    # Dividir el dataset en entrenamiento y prueba
     train_size = int(0.8 * len(dataset))
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, len(dataset) - train_size])
-    
-    train_loader = DataLoader(train_dataset, batch_size=Config.BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=Config.BATCH_SIZE, shuffle=False)
-    
-    model.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
-    
-    for epoch in range(Config.NUM_EPOCHS):
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)  # Reduce batch_size
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False)
+
+    # Configuración del optimizador
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)  # Valor recomendado para DistilBERT
+
+    # Entrenamiento
+    for epoch in range(3):  # Reduce el número de épocas
+        total_loss = 0
+        model.train()
         for batch in train_loader:
             input_ids, attention_mask, labels = batch
             outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
@@ -51,10 +89,16 @@ def train_model():
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-    
-    model.save_pretrained(model_folder)
-    tokenizer.save_pretrained(model_folder)
-    print("Modelo entrenado y guardado.")
+            total_loss += loss.item()
+        print(f"Época {epoch+1}/3 completada. Pérdida promedio: {total_loss:.4f}")
+
+    # Guardar el modelo
+    try:
+        model.save_pretrained(model_folder, safe_serialization=False)  # Forzar el guardado en formato binario
+        tokenizer.save_pretrained(model_folder)
+        print("Modelo guardado correctamente en 'model_folder'.")
+    except Exception as e:
+        print(f"Error al guardar el modelo: {e}")
 
 def evaluate_validation_loss(model, validation_loader):
     model.eval()
@@ -93,12 +137,11 @@ def save_model(model):
     tokenizer.save_pretrained(model_folder)
 
 def get_response(question, user_id):
-    # Detectar el idioma de la pregunta
+    # Detectar idioma y traducir si es necesario
     lang = detect_language(question)
-    
-    # Traducir la pregunta al inglés si es necesario
     if lang != 'en':
         question = translate_text(question, src_lang=lang, dest_lang='en')
+    # Procesar la pregunta y obtener respuesta...
     
     preprocessed_question = preprocess(question)
     inputs = tokenizer(preprocessed_question, return_tensors="pt", padding=True, truncation=True, max_length=128)
@@ -107,6 +150,9 @@ def get_response(question, user_id):
         outputs = model(**inputs)
         probabilities = softmax(outputs.logits, dim=-1)
         predicted_class = torch.argmax(probabilities).item()
+
+    print(f"Pregunta procesada: {preprocessed_question}")
+    print(f"Predicción: {predicted_class}, Probabilidades: {probabilities}")
     
     db_data = read_db()
     questions_db = db_data.get('questions', {})
@@ -122,6 +168,39 @@ def get_response(question, user_id):
         response = translate_text(response, src_lang='en', dest_lang=lang)
     
     return response
+
+def get_response_with_fallback(question, user_id):
+    # Paso 1: Intenta obtener una respuesta de gpt-4o-mini
+    try:
+        gpt4_response = call_gpt4o_mini_api(question)  # Define esta función para llamar a gpt-4o-mini
+        if gpt4_response:
+            return gpt4_response
+    except Exception as e:
+        print(f"Error al consultar gpt-4o-mini: {e}")
+
+    # Paso 2: Si gpt-4o-mini falla, usa tu modelo local
+    try:
+        local_response = get_response(question, user_id)  # Tu función ya existente
+        if local_response:
+            return local_response
+    except Exception as e:
+        print(f"Error al consultar el modelo local: {e}")
+
+    # Paso 3: Si ambos fallan, guarda la pregunta en la base de datos
+    try:
+        db_data = read_db()
+        questions_db = db_data.get('questions', {})
+        new_question_id = len(questions_db) + 1
+        questions_db[new_question_id] = {
+            "content": question,
+            "answer": None,  # Sin respuesta por ahora
+            "user_id": user_id
+        }
+        write_db(db_data)
+        return "Lo siento, no tengo una respuesta ahora. He registrado tu consulta para analizarla más tarde."
+    except Exception as e:
+        print(f"Error al guardar la pregunta: {e}")
+        return "Lo siento, no tengo una respuesta y tampoco pude registrar tu consulta."
 
 def get_game_strategy(game_name):
     return f"Estrategia para {game_name}"
